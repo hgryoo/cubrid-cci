@@ -7592,6 +7592,13 @@ qe_stream_init (T_CON_HANDLE * con_handle, int stream_kind, const char *config, 
   char *result_msg = NULL;
   int result_msg_size = 0;
 
+  /* the CAS keeps no auto-commit mode for a driver-opened stream, so the open says it, as the download forms do */
+  flags &= CAS_STREAM_FLAG_FINAL;
+  if (con_handle->autocommit_mode == CCI_AUTOCOMMIT_TRUE)
+    {
+      flags |= CAS_STREAM_FLAG_AUTO_COMMIT;
+    }
+
   net_buf_init (&net_buf);
   net_buf_cp_str (&net_buf, &func_code, 1);
   ADD_ARG_INT (&net_buf, stream_kind);
