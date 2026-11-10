@@ -986,6 +986,11 @@ extern "C"
   extern int cci_is_shard (int con_h_id, T_CCI_ERROR * err_buf);
   extern int cci_get_cas_info (int mapped_conn_id, char *info_buf, int buf_length, T_CCI_ERROR * err_buf);
 
+  /* Stream calls. A config starts with the kind's version, a big-endian int; CCI reads none of it. A refusal by the
+   * server returns CCI_ER_DBMS with err_buf->err_code: -1218 no stream is open or the handle does not resolve,
+   * -1219 the kind or the config version is not supported (the message names the highest version), -1220 the
+   * request is out of order, -1217 any other refusal. A kind may also refuse with an error code of its own. */
+
   /* flags of the bundled stream calls, and of what cci_stream_read_open () / cci_stream_read () report */
 #define CCI_STREAM_FINAL		0x01	/* cci_stream_init (): data is the whole value */
 #define CCI_STREAM_RELEASE_AT_EOF	0x01	/* cci_stream_read_open (), cci_stream_read () */

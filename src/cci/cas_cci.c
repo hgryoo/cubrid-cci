@@ -6728,6 +6728,7 @@ cci_stream_end (int mapped_conn_id, T_CCI_ERROR * err_buf)
 
 /*
  * cci_stream_init () - Open a stream of a kind whose client half is the driver
+ *   config, config_len: the kind's config, starting with its version (a big-endian int)
  *   flags, data, data_len: CAS_STREAM_FLAG_FINAL with the whole value, or 0 with a first chunk or none
  *   count(out): with CAS_STREAM_FLAG_FINAL, what cci_stream_end () would have returned
  */
@@ -6821,6 +6822,7 @@ cci_stream_send_final (int mapped_conn_id, const char *data, int data_len, long 
 
 /*
  * cci_stream_read_open () - Open a server->client stream
+ *   config, config_len: the kind's config, starting with its version (a big-endian int)
  *   first_max, flags: 0, 0 to open only; or the bytes buf takes from a first read in the same request, and
  *                     CAS_STREAM_FLAG_RELEASE_AT_EOF to leave no handle when that read is the whole value
  *   handle(out): for cci_stream_read () and cci_stream_release (); 0 when nothing was left open
