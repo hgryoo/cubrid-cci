@@ -7592,7 +7592,7 @@ qe_stream_init (T_CON_HANDLE * con_handle, int stream_kind, const char *config, 
   char *result_msg = NULL;
   int result_msg_size = 0;
 
-  /* the CAS keeps no auto-commit mode for a driver-opened stream, so the open says it, as the download forms do */
+  /* the CAS keeps no auto-commit mode for a driver-opened stream, so the open says it, as the download calls do */
   flags &= CAS_STREAM_FLAG_FINAL;
   if (con_handle->autocommit_mode == CCI_AUTOCOMMIT_TRUE)
     {
@@ -7603,11 +7603,8 @@ qe_stream_init (T_CON_HANDLE * con_handle, int stream_kind, const char *config, 
   net_buf_cp_str (&net_buf, &func_code, 1);
   ADD_ARG_INT (&net_buf, stream_kind);
   ADD_ARG_BYTES (&net_buf, config, config_len);
-  if (flags != 0 || data_len > 0)
-    {
-      ADD_ARG_BYTES (&net_buf, &flags, 1);
-      ADD_ARG_BYTES (&net_buf, data, data_len);
-    }
+  ADD_ARG_BYTES (&net_buf, &flags, 1);
+  ADD_ARG_BYTES (&net_buf, data, data_len);
 
   err_code = qe_stream_request (con_handle, &net_buf, &result_msg, &result_msg_size, err_buf);
   if (flags & CAS_STREAM_FLAG_FINAL)
@@ -7655,7 +7652,7 @@ qe_stream_send_final (T_CON_HANDLE * con_handle, const char *data, int data_len,
   return err_code;
 }
 
-/* the auto-commit bit the bundled download forms carry, as RELEASE carries its auto-commit byte */
+/* the auto-commit bit the download requests carry, as RELEASE carries its auto-commit byte */
 static char
 qe_stream_read_flags (T_CON_HANDLE * con_handle, char flags)
 {
@@ -7668,7 +7665,7 @@ qe_stream_read_flags (T_CON_HANDLE * con_handle, char flags)
   return flags;
 }
 
-/* first_max > 0 or CAS_STREAM_FLAG_RELEASE_AT_EOF sends the bundled form: the first piece comes back with the handle */
+/* the first piece, up to first_max bytes (0 opens only), comes back with the handle */
 int
 qe_stream_read_open (T_CON_HANDLE * con_handle, int stream_kind, const char *config, int config_len, int first_max,
 		     char flags, long long *handle, char *buf, int *nread, char *reply_flags, T_CCI_ERROR * err_buf)
@@ -7678,7 +7675,6 @@ qe_stream_read_open (T_CON_HANDLE * con_handle, int stream_kind, const char *con
   int err_code;
   char *result_msg = NULL;
   int result_msg_size = 0;
-  bool bundled = (first_max > 0 || (flags & CAS_STREAM_FLAG_RELEASE_AT_EOF));
   INT64 value = 0;
 
   *handle = 0;
@@ -7687,14 +7683,11 @@ qe_stream_read_open (T_CON_HANDLE * con_handle, int stream_kind, const char *con
 
   net_buf_init (&net_buf);
   net_buf_cp_str (&net_buf, &func_code, 1);
+  flags = qe_stream_read_flags (con_handle, flags);
   ADD_ARG_INT (&net_buf, stream_kind);
   ADD_ARG_BYTES (&net_buf, config, config_len);
-  if (bundled)
-    {
-      flags = qe_stream_read_flags (con_handle, flags);
-      ADD_ARG_INT (&net_buf, first_max);
-      ADD_ARG_BYTES (&net_buf, &flags, 1);
-    }
+  ADD_ARG_INT (&net_buf, first_max);
+  ADD_ARG_BYTES (&net_buf, &flags, 1);
 
   err_code = qe_stream_request (con_handle, &net_buf, &result_msg, &result_msg_size, err_buf);
   if (err_code >= 0)
@@ -7707,11 +7700,8 @@ qe_stream_read_open (T_CON_HANDLE * con_handle, int stream_kind, const char *con
 	{
 	  NET_STR_TO_BIGINT (value, result_msg + NET_SIZE_INT);
 	  *handle = (long long) value;
-	  if (bundled)
-	    {
-	      err_code = qe_stream_take_read (result_msg + NET_SIZE_INT + NET_SIZE_BIGINT, result_msg + result_msg_size,
-					      buf, first_max, nread, reply_flags);
-	    }
+	  err_code = qe_stream_take_read (result_msg + NET_SIZE_INT + NET_SIZE_BIGINT, result_msg + result_msg_size, buf,
+					  first_max, nread, reply_flags);
 	}
     }
   FREE_MEM (result_msg);
